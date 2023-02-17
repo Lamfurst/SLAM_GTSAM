@@ -1,4 +1,4 @@
-#include "readG2OFile.h"
+#include "io.h"
 
 #include <iostream>
 #include <fstream>
@@ -13,10 +13,6 @@
 
 using namespace std;
 using namespace gtsam;
-// Programmer: Junkai Zhang, February 16th 2023
-
-// Purpose: This is a simple file helps to read G2O files and convert the
-// G2O file to the GTSAM graph file needed.
 
 void read2DG2O(const string& filename, 
                NonlinearFactorGraph& graph,
@@ -65,8 +61,9 @@ void read2DG2O(const string& filename,
             infoMatrix(2, 0) = q13;
             infoMatrix(2, 1) = q23;
             infoMatrix(2, 2) = q33;
-
-            auto odometryNoise = noiseModel::Gaussian::Information(infoMatrix);
+            
+            Matrix3 covMatrix = infoMatrix.inverse();
+            auto odometryNoise = noiseModel::Gaussian::Covariance(covMatrix);
             graph.add(BetweenFactor<Pose2>(firstKey, secondKey, 
                                            pose, odometryNoise));
 
@@ -79,4 +76,26 @@ void read3DG2O(const string& filename,
                Values& initialValue)
 {
 
+}
+
+void exportValuesToCSV(const string& filename, Values& initialValue, 
+                       const bool is2D)
+{
+    ofstream outfile(filename);
+    // If this is 2D value
+    if (is2D)
+    {
+        outfile << "x,y" << endl;
+        for (const auto& key_value : initialValue)
+        {
+            const auto pose = key_value.value.cast<Pose2>();
+            outfile << pose.x() << "," << pose.y() << endl;
+        }
+    }
+    else
+    {
+        ;
+    }
+
+    outfile.close();
 }

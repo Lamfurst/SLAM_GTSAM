@@ -4,7 +4,9 @@ project( GTSAMTest )
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable( GTSAM_SLAM src/GTSAM_SLAM.cpp src/readG2OFile.cpp)
+
+add_executable( GTSAM_SLAM src/GTSAM_SLAM.cpp src/io.cpp)
+
 
 find_package( GTSAM REQUIRED )
 include_directories(${GTSAM_INCLUDE_DIR})
