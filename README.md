@@ -39,16 +39,5 @@ Optional prerequisites - used automatically if findable by CMake:
     - See [INSTALL.md](INSTALL.md) for more installation information
     - Note that MKL may not provide a speedup in all cases. Make sure to benchmark your problem with and without MKL.
 
-## Citation
-```bibtex
-@book{factor_graphs_for_robot_perception,
-    author={Frank Dellaert and Michael Kaess},
-    year={2017},
-    title={Factor Graphs for Robot Perception},
-    publisher={Foundations and Trends in Robotics, Vol. 6},
-    url={http://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf}
-}
-```
-
 ## License
 This software is released under the MIT License. See the LICENSE file for more information.
