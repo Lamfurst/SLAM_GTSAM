@@ -6,6 +6,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <sstream>
 
 // Programmer: Junkai Zhang, February 16th 2023
 
@@ -19,19 +20,18 @@
 // is it a good practice to use using namespace?
 
 // Use this function to read 2D G2O File
-void read2DG2O(const std::string& filename, 
-               gtsam::NonlinearFactorGraph& graph,
-               gtsam::Values& initialValue);
-
-// Use this function to read 3D G2O File
-void read3DG2O(const std::string& filename, 
-               gtsam::NonlinearFactorGraph& graph,
-               gtsam::Values& initialValue);
+void readG2O(const std::string& filename, 
+             gtsam::NonlinearFactorGraph& graph,
+             gtsam::Values& initialValue,
+             const bool is2D);
 
 // I don't know why my matplotcpp does not work. So I use this function to
 // export csv file to plot in Matlab
 void exportValuesToCSV(const std::string& filename, gtsam::Values& initialValue, 
                        const bool is2D);
 
+// This is help function to build symmetric infomation matrix
+template <typename M>
+void buildInfoMatrix(size_t size, std::istringstream& iss, M& infoMatrix);
 
 #endif

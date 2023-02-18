@@ -22,17 +22,22 @@ using namespace gtsam;
 // the optimized solution is output with csv file, which is used to plot in
 // Matlab
 
+// =============================================================================
+
 const bool CSV_2D = true;
 const bool CSV_3D = false;
 
-// This function solves the 2D graph SLAM using batch solution.
-void solve2DBatch(NonlinearFactorGraph& graph, Values& initialValue, 
-                  Values& result, double tol = 1e-5, int maxIter = 1000);
+// This function solves graph SLAM using batch solution.
+void solveBatch(NonlinearFactorGraph& graph, Values& initialValue, 
+                Values& result, double tol = 1e-5, int maxIter = 1000);
 
-// This function solves the 2D graph SLAM using incremental solution.
-void solve2DIncremental(const NonlinearFactorGraph& graph, 
-                        const Values& initialValue, 
-                        Values& result);
+// This template function solves the graph SLAM using incremental solution.
+template <typename Pose>
+void solveIncremental(const NonlinearFactorGraph& graph, 
+                      const Values& initialValue, Values& result,
+                      const bool is2D);
+
+// =============================================================================
 
 int main(int argc, char** argv)
 {
@@ -45,22 +50,21 @@ int main(int argc, char** argv)
     // The following code is for 1B 
     NonlinearFactorGraph graph;
     Values initialValue;
-    Values result2DBatch;
-    string inputfilename = "../G2O_Files/input_INTEL_g2o.g2o";
 
     // Read from G2O and build graph
-    read2DG2O(inputfilename, graph, initialValue);
+    // TODO: Change the G2O file location
+    string inputfilename = "../G2O_Files/input_INTEL_g2o.g2o";
+    readG2O(inputfilename, graph, initialValue, CSV_2D);
 
-    
     string outputFilename;
-
     // Write initial values to csv for plotting
     // TODO: Change the outputFilename to your folder
     outputFilename = "../CSV/initial2D.csv"; 
     exportValuesToCSV(outputFilename, initialValue, CSV_2D);
 
     // Solve using batch solution and export result to CSV file
-    solve2DBatch(graph, initialValue, result2DBatch);
+    Values result2DBatch;
+    solveBatch(graph, initialValue, result2DBatch);
 
     // Write solution to csv for plotting
     // TODO: Change the outputFilename to your folder
@@ -73,7 +77,8 @@ int main(int argc, char** argv)
     Values result2DIncremental;
 
     // Solve using batch solution and export result to CSV file
-    solve2DIncremental(graph, initialValue, result2DIncremental);
+    // solve2DIncremental(graph, initialValue, result2DIncremental);
+    solveIncremental<Pose2>(graph, initialValue, result2DIncremental,CSV_2D);
 
     // Write solution to csv for plotting
     // TODO: Change the outputFilename to your folder
@@ -82,12 +87,56 @@ int main(int argc, char** argv)
 
     // =========================================================================
 
+    // The following code is for Q2
+    NonlinearFactorGraph graph3D;
+    Values initialValue3D;
+
+    // Read from G2O and build graph
+    // TODO: Change the G2O file location
+    inputfilename = "../G2O_Files/parking-garage.g2o";
+    readG2O(inputfilename, graph3D, initialValue3D, CSV_3D);
+
+    // Write initial values to csv for plotting
+    // TODO: Change the outputFilename to your folder
+    outputFilename = "../CSV/initial3D.csv"; 
+    exportValuesToCSV(outputFilename, initialValue3D, CSV_3D);
+
+    // =========================================================================
+
+    // The following code is for 2B
+
+    Values result3DBatch;
+    // // Solve using batch solution and export result to CSV file
+    solveBatch(graph3D, initialValue3D, result3DBatch);
+
+    // Write solution to csv for plotting
+    // TODO: Change the outputFilename to your folder
+    outputFilename = "../CSV/result3DBatch.csv";
+    exportValuesToCSV(outputFilename, result3DBatch, CSV_3D);
+
+    // =========================================================================
+
+    // The following code is for 2C
+
+    Values result3DIncremental;
+
+    // Solve using batch solution and export result to CSV file
+    // solve2DIncremental(graph, initialValue, result2DIncremental);
+    solveIncremental<Pose3>(graph3D, initialValue3D, 
+                            result3DIncremental, CSV_3D);
+
+    // Write solution to csv for plotting
+    // TODO: Change the outputFilename to your folder
+    outputFilename = "../CSV/result3DIncremental.csv";
+    exportValuesToCSV(outputFilename, result3DIncremental, CSV_3D);
     
     return 0;
 }
 
-void solve2DBatch(NonlinearFactorGraph& graph, Values& initialValue,
-                  Values& result, double tol, int maxIter)
+// =============================================================================
+
+void solveBatch(NonlinearFactorGraph& graph, Values& initialValue,
+                Values& result, double tol, int maxIter)
 {
     GaussNewtonParams parameters;
     parameters.relativeErrorTol = tol;
@@ -97,9 +146,12 @@ void solve2DBatch(NonlinearFactorGraph& graph, Values& initialValue,
     result = optimizer.optimize();
 }
 
-void solve2DIncremental(const NonlinearFactorGraph& graph, 
-                        const Values& initialValue, 
-                        Values& result)
+// =============================================================================
+
+template <typename Pose>
+void solveIncremental(const NonlinearFactorGraph& graph, 
+                      const Values& initialValue, Values& result, 
+                      const bool is2D)
 {
     ISAM2 isam;
     const size_t poseNum = initialValue.size();
@@ -107,17 +159,26 @@ void solve2DIncremental(const NonlinearFactorGraph& graph,
     {
         NonlinearFactorGraph iGraph;
         Values iValues;
-        Pose2 pose = initialValue.at(i).cast<Pose2>();
+        Pose pose = initialValue.at(i).cast<Pose>();
         if (i == 0)
         {
-            auto priorNoise = noiseModel::Diagonal::
-                              Sigmas(Vector3(0.3, 0.3, 0.1));
-            iGraph.add(PriorFactor<Pose2>(i, pose, priorNoise));
+            if (is2D)
+            {
+                auto priorNoise = noiseModel::Diagonal::
+                                  Sigmas(Vector3(0.3, 0.3, 0.1));
+                iGraph.add(PriorFactor<Pose>(i, pose, priorNoise));
+            }
+            else
+            {
+                auto priorNoise = noiseModel::Diagonal::
+                                  Sigmas(Vector6(0.3, 0.3, 0.3, 0.1, 0.1, 0.1));
+                iGraph.add(PriorFactor<Pose>(i, pose, priorNoise));  
+            }
             iValues.insert(i, pose);
         }
         else
         {
-            Pose2 prevPose = result.at(i - 1).cast<Pose2>();
+            Pose prevPose = result.at(i - 1).cast<Pose>();
             iValues.insert(i, prevPose);
 
             size_t numEdges = graph.size();
@@ -135,3 +196,5 @@ void solve2DIncremental(const NonlinearFactorGraph& graph,
         result = isam.calculateEstimate();
     }
 }
+
+// =============================================================================
