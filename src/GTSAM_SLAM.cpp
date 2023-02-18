@@ -8,6 +8,7 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/slam/dataset.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/ISAM2.h>
 
 #include "io.h"
 
@@ -26,10 +27,12 @@ const bool CSV_3D = false;
 
 // This function solves the 2D graph SLAM using batch solution.
 void solve2DBatch(NonlinearFactorGraph& graph, Values& initialValue, 
-                  Values& result, double tol, int maxIter);
+                  Values& result, double tol = 1e-5, int maxIter = 1000);
 
 // This function solves the 2D graph SLAM using incremental solution.
-void solve2DIncremental ();
+void solve2DIncremental(const NonlinearFactorGraph& graph, 
+                        const Values& initialValue, 
+                        Values& result);
 
 int main(int argc, char** argv)
 {
@@ -42,28 +45,43 @@ int main(int argc, char** argv)
     // The following code is for 1B 
     NonlinearFactorGraph graph;
     Values initialValue;
-    Values result;
+    Values result2DBatch;
     string inputfilename = "../G2O_Files/input_INTEL_g2o.g2o";
 
     // Read from G2O and build graph
     read2DG2O(inputfilename, graph, initialValue);
 
-    // Write initial values to csv for plotting
+    
     string outputFilename;
-    outputFilename = "../CSV/initial.csv";
+
+    // Write initial values to csv for plotting
+    // TODO: Change the outputFilename to your folder
+    outputFilename = "../CSV/initial2D.csv"; 
     exportValuesToCSV(outputFilename, initialValue, CSV_2D);
 
     // Solve using batch solution and export result to CSV file
-    double tol = 1e-5;
-    int maxIter = 1000;
-    solve2DBatch(graph, initialValue, result, tol, maxIter);
+    solve2DBatch(graph, initialValue, result2DBatch);
+
     // Write solution to csv for plotting
-    outputFilename = "../CSV/resultBatch.csv";
-    exportValuesToCSV(outputFilename, result, CSV_2D);
+    // TODO: Change the outputFilename to your folder
+    outputFilename = "../CSV/result2DBatch.csv";
+    exportValuesToCSV(outputFilename, result2DBatch, CSV_2D);
+
+    // =========================================================================
+    
+    // The following code is for 1C
+    Values result2DIncremental;
+
+    // Solve using batch solution and export result to CSV file
+    solve2DIncremental(graph, initialValue, result2DIncremental);
+
+    // Write solution to csv for plotting
+    // TODO: Change the outputFilename to your folder
+    outputFilename = "../CSV/result2DIncremental.csv";
+    exportValuesToCSV(outputFilename, result2DIncremental, CSV_2D);
 
     // =========================================================================
 
-    
     
     return 0;
 }
@@ -71,17 +89,49 @@ int main(int argc, char** argv)
 void solve2DBatch(NonlinearFactorGraph& graph, Values& initialValue,
                   Values& result, double tol, int maxIter)
 {
-    // Add prior factor to graph
-    Pose2 priorMean(0.0, 0.0, 0.0);
-    auto priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.3, 0.3, 0.1));
-    graph.add(PriorFactor<Pose2>(1, priorMean, priorNoise));
-
     GaussNewtonParams parameters;
     parameters.relativeErrorTol = tol;
     parameters.maxIterations = maxIter;
 
     GaussNewtonOptimizer optimizer(graph, initialValue, parameters);
     result = optimizer.optimize();
-    // result = LevenbergMarquardtOptimizer(graph, initialValue).optimize();
 }
 
+void solve2DIncremental(const NonlinearFactorGraph& graph, 
+                        const Values& initialValue, 
+                        Values& result)
+{
+    ISAM2 isam;
+    const size_t poseNum = initialValue.size();
+    for (size_t i = 0; i < poseNum; ++i)
+    {
+        NonlinearFactorGraph iGraph;
+        Values iValues;
+        Pose2 pose = initialValue.at(i).cast<Pose2>();
+        if (i == 0)
+        {
+            auto priorNoise = noiseModel::Diagonal::
+                              Sigmas(Vector3(0.3, 0.3, 0.1));
+            iGraph.add(PriorFactor<Pose2>(i, pose, priorNoise));
+            iValues.insert(i, pose);
+        }
+        else
+        {
+            Pose2 prevPose = result.at(i - 1).cast<Pose2>();
+            iValues.insert(i, prevPose);
+
+            size_t numEdges = graph.size();
+            for (size_t j = 1; j < numEdges; ++j)
+            {
+                const auto edge = graph.at(j);
+                const auto keys = edge->keys();
+                if (keys[1] == i)
+                {
+                    iGraph.add(edge);
+                }
+            }
+        }
+        isam.update(iGraph, iValues);
+        result = isam.calculateEstimate();
+    }
+}

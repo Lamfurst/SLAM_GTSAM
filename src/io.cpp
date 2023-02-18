@@ -21,6 +21,12 @@ void read2DG2O(const string& filename,
     ifstream file(filename);
     string line;
 
+    // Add prior factor to graph
+    Pose2 priorMean(0.0, 0.0, 0.0);
+    auto priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.3, 0.3, 0.1));
+    graph.add(PriorFactor<Pose2>(1, priorMean, priorNoise));
+
+    // Read from G2O file
     while (getline(file, line))
     {
         istringstream iss(line);
