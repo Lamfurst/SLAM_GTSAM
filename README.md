@@ -12,11 +12,6 @@ cmake ..
 make
 ```
 
-Go back to the root library folder execute following to build the CSV folder to save the CSV output:
-```sh
-#!bash
-mkdir CSV
-```
 In the root library folder execute:
 ```sh
 #!bash
@@ -24,7 +19,7 @@ cd build
 ./GTSAM_SLAM
 ```
 
-The output csv is then saved to the CSV folder you just made.
+The output csv is then saved to the CSV folder you just made. You can run the Plot1.m file in CSV to plot from saved CSV.
 
 Prerequisites:
 
