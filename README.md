@@ -1,5 +1,7 @@
 # SLAM_GTSAM
 This is a project that uses GTSAM to solve Graph SLAM. This program reads G2O file from this Datasets https://lucacarlone.mit.edu/datasets/. The resulted optimized values is exported to CSV file to be later plot in Matlab.
+![1C](https://github.com/Lamfurst/SLAM_GTSAM/assets/66519297/d1f6f091-e8a1-4ed5-b616-61ba9df8b44c)
+![2C](https://github.com/Lamfurst/SLAM_GTSAM/assets/66519297/337d1535-188f-4aa7-addd-09683655a287)
 
 ## Quickstart
 
